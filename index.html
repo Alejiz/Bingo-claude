@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bingo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>🎱 Bingo</h1>
+    <span id="contador">0 / 75</span>
+    <button id="btnReiniciar" class="chico">Reiniciar</button>
+  </header>
+
+  <main>
+    <section class="bombo-zona">
+      <div class="bombo-wrap">
+        <div id="bombo"></div>
+        <div class="base"></div>
+      </div>
+      <p id="ultima">Pulsa «Jugar» para empezar</p>
+    </section>
+    <section id="tablero"></section>
+  </main>
+
+  <div id="bola" class="oculta">
+    <div class="disco"><span class="l"></span><span class="n"></span></div>
+  </div>
+
+  <footer class="controles">
+    <button id="btnJugar">▶ Jugar</button>
+    <button id="btnRecuento" disabled>🔊 Recuento</button>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+:root{--bg:#0f1420;--panel:#1a2236;--txt:#eef2ff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--txt);font-family:system-ui,"Segoe UI",Roboto,sans-serif;padding-bottom:100px}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--panel)}
+h1{margin:0;font-size:22px;flex:1}
+#contador{font-weight:700}
+.chico{background:transparent;border:1px solid #475070;color:var(--txt);border-radius:8px;padding:6px 12px;cursor:pointer}
+main{display:grid;grid-template-columns:320px 1fr;gap:24px;padding:24px;align-items:start}
+.bombo-zona{text-align:center}
+.bombo-wrap{width:280px;margin:0 auto}
+#bombo{width:280px;height:280px;border-radius:50%;border:8px solid #cfd6e6;position:relative;overflow:hidden;
+  background:repeating-conic-gradient(rgba(255,255,255,.12) 0 2deg,transparent 2deg 22.5deg),rgba(255,255,255,.04)}
+#bombo.girando{animation:giro 1.6s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+.mini{position:absolute;width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff 0 10%,var(--c) 11%)}
+#bombo.girando .mini{animation:salta .45s ease-in-out infinite alternate}
+@keyframes salta{from{transform:translate(0,0)}to{transform:translate(var(--dx),var(--dy))}}
+.base{width:140px;height:14px;background:#cfd6e6;border-radius:8px;margin:6px auto 0}
+#ultima{font-size:22px;font-weight:700;min-height:30px}
+
+#tablero{display:grid;grid-template-columns:auto repeat(15,1fr);gap:4px}
+.letra{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;padding-right:8px;color:var(--c)}
+.celda{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  background:var(--panel);color:#7f8aa8;font-weight:600;font-size:clamp(10px,1.5vw,18px);transition:background .3s}
+.celda.salio{background:var(--c);color:#fff}
+.celda.resalta{outline:3px solid #fff;transform:scale(1.15)}
+
+#bola{position:fixed;left:0;top:0;width:170px;height:170px;border-radius:50%;z-index:50;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(0,0,0,.6);
+  background:radial-gradient(circle at 35% 30%,#fff 0 6%,var(--c) 7%)}
+.disco{width:72%;height:72%;border-radius:50%;background:#fff;color:#111;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-weight:800;line-height:1}
+.disco .l{font-size:34px}.disco .n{font-size:58px}
+.oculta{display:none!important}
+
+.controles{position:fixed;right:20px;bottom:20px;display:flex;gap:12px;z-index:60}
+.controles button{font-size:18px;font-weight:700;padding:14px 22px;border:0;border-radius:12px;cursor:pointer;background:#3b82f6;color:#fff}
+#btnRecuento{background:#f59e0b;color:#111}
+.controles button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:800px){main{grid-template-columns:1fr}.letra{font-size:18px;padding-right:4px}}
