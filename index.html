@@ -114,6 +114,16 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
 .btn-p{background:linear-gradient(135deg,#10b981,#059669)}.btn-s{background:rgba(255,255,255,.08)}
 .estadoSala{margin-top:14px;font-size:13px;font-weight:700;color:#94a3b8}
 .estadoSala.ok{color:#34d399}.estadoSala.conectando{color:#7dd3fc}.estadoSala.error{color:#f87171}
+.ajustes{height:40px;padding:0 16px;border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fbbf24}
+.ajustes:hover{background:rgba(255,255,255,.1)}
+.espectador .solo-host{display:none}
+.caja{max-height:92vh;overflow:auto}
+.ajuste{text-align:left;margin-top:18px}
+.ajuste label{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;margin-bottom:8px}
+.ajuste label b{color:#fbbf24}
+.ajuste input[type=range]{width:100%;accent-color:#fbbf24}
+.ajuste small{display:block;margin-top:6px;font-size:12px;line-height:1.5;color:#94a3b8}
+.probar{margin-left:6px;padding:3px 10px;border-radius:8px;border:1px solid rgba(251,191,36,.5);background:transparent;color:#fbbf24;font:700 12px Outfit,system-ui,sans-serif;cursor:pointer}
 </style>
 </head>
 <body>
@@ -128,6 +138,7 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
     <div class="acciones">
       <div id="estado" class="pill listo"><span class="punto"></span><span id="estadoTxt">Listo para iniciar</span></div>
       <label class="voz" id="vozWrap"><i data-i="mic"></i><select id="selVoz" aria-label="Voz del canto"></select></label>
+      <button id="btnAjustes" class="ajustes"><i data-i="ajustes"></i>Ajustes</button>
       <button id="btnCompartir" class="compartir"><i data-i="share"></i>Compartir</button>
       <button id="btnReiniciar" class="reiniciar"><i data-i="refresh"></i>Reiniciar</button>
     </div>
@@ -172,6 +183,29 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
       <h3>🎱 Bingo en vivo</h3>
       <p>Estás viendo el juego que dirige el anfitrión: bombo, tablero y voz en esta pantalla. Toca el botón para entrar y activar el sonido.</p>
       <div class="fila"><button id="btnEntrar" class="btn-p">Entrar al bingo</button></div>
+    </div>
+  </div>
+
+  <div id="panelAjustes" class="modal oculta">
+    <div class="caja">
+      <h3>Ajustes de velocidad</h3>
+      <p>Los cambios se aplican desde la siguiente bola y se guardan en este dispositivo.</p>
+      <div class="ajuste">
+        <label for="rCanto"><span>Velocidad al cantar la bola</span><b id="vCanto"></b></label>
+        <input id="rCanto" type="range" min="0.5" max="1.5" step="0.05">
+        <small>Más a la izquierda = más despacio. <button id="pCanto" class="probar">Probar</button></small>
+      </div>
+      <div class="ajuste">
+        <label for="rRecuento"><span>Velocidad del reconteo</span><b id="vRecuento"></b></label>
+        <input id="rRecuento" type="range" min="0.5" max="3" step="0.1">
+        <small>Controla la voz y la pausa entre números: más a la derecha = reconteo más rápido. <button id="pRecuento" class="probar">Probar</button></small>
+      </div>
+      <div class="ajuste solo-host">
+        <label for="rEspera"><span>Espera entre bola y bola</span><b id="vEspera"></b></label>
+        <input id="rEspera" type="range" min="1" max="15" step="0.5">
+        <small>Segundos que pasan antes de sacar la siguiente bola.</small>
+      </div>
+      <div class="fila"><button id="btnRestablecer" class="btn-s">Restablecer</button><button id="btnCerrarAjustes" class="btn-p">Listo</button></div>
     </div>
   </div>
 
@@ -226,6 +260,7 @@ const ICONOS = {
   list: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
   history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   table: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+  ajustes: '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'
 };
 const svg = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[n]}</svg>`;
@@ -582,6 +617,36 @@ $('btnCopiar').onclick = async () => {
 };
 if (navigator.share) $('btnEnviar').onclick = () => navigator.share({ title: 'Bingo Familiar 75', text: 'Entra al bingo en vivo', url: enlace() }).catch(() => {});
 else $('btnEnviar').classList.add('oculta');
+
+/* ---------- Ajustes de velocidad (se guardan en el dispositivo) ---------- */
+const AJ_DEF = { velocidadCanto: CFG.velocidadCanto, velocidadRecuento: CFG.velocidadRecuento, esperaEntreBolas: CFG.esperaEntreBolas, pausaRecuento: CFG.pausaRecuento };
+function aplicarAjustes(a) {
+  CFG.velocidadCanto = a.velocidadCanto;
+  CFG.velocidadRecuento = a.velocidadRecuento;
+  CFG.esperaEntreBolas = a.esperaEntreBolas;
+  CFG.pausaRecuento = a.pausaRecuento != null ? a.pausaRecuento : Math.round(1200 / a.velocidadRecuento);
+}
+function guardarAjustes() {
+  try { localStorage.setItem('bingoAjustes', JSON.stringify({ velocidadCanto: CFG.velocidadCanto, velocidadRecuento: CFG.velocidadRecuento, esperaEntreBolas: CFG.esperaEntreBolas })); } catch (e) {}
+}
+function pintarAjustes() {
+  $('rCanto').value = CFG.velocidadCanto;       $('vCanto').textContent = (+CFG.velocidadCanto).toFixed(2) + '×';
+  $('rRecuento').value = CFG.velocidadRecuento; $('vRecuento').textContent = (+CFG.velocidadRecuento).toFixed(1) + '×';
+  $('rEspera').value = CFG.esperaEntreBolas / 1000; $('vEspera').textContent = (CFG.esperaEntreBolas / 1000).toFixed(1) + ' s';
+}
+try { const g = JSON.parse(localStorage.getItem('bingoAjustes') || 'null'); if (g) aplicarAjustes({ velocidadCanto: +g.velocidadCanto || AJ_DEF.velocidadCanto, velocidadRecuento: +g.velocidadRecuento || AJ_DEF.velocidadRecuento, esperaEntreBolas: +g.esperaEntreBolas || AJ_DEF.esperaEntreBolas }); } catch (e) {}
+$('rCanto').oninput = e => { CFG.velocidadCanto = +e.target.value; pintarAjustes(); guardarAjustes(); };
+$('rRecuento').oninput = e => { CFG.velocidadRecuento = +e.target.value; CFG.pausaRecuento = Math.round(1200 / CFG.velocidadRecuento); pintarAjustes(); guardarAjustes(); };
+$('rEspera').oninput = e => { CFG.esperaEntreBolas = Math.round(+e.target.value * 1000); pintarAjustes(); guardarAjustes(); };
+function probar(btn, vel) {
+  if (jugando || recontando || enTurno) { const t = btn.textContent; btn.textContent = 'Pausa el juego'; setTimeout(() => btn.textContent = t, 1800); return; }
+  detenerVoz(); decir(12, vel);
+}
+$('pCanto').onclick = e => probar(e.target, CFG.velocidadCanto);
+$('pRecuento').onclick = e => probar(e.target, CFG.velocidadRecuento);
+$('btnRestablecer').onclick = () => { aplicarAjustes(AJ_DEF); CFG.pausaRecuento = AJ_DEF.pausaRecuento; pintarAjustes(); guardarAjustes(); };
+$('btnAjustes').onclick = () => { pintarAjustes(); $('panelAjustes').classList.remove('oculta'); };
+$('btnCerrarAjustes').onclick = () => $('panelAjustes').classList.add('oculta');
 
 /* ---------- Botones ---------- */
 function alternarJuego() {
