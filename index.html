@@ -101,6 +101,19 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
 
 @media(max-width:1000px){main{grid-template-columns:1fr}.barra{left:12px;right:12px;bottom:12px}.btn-main{flex:1}.bolaVis{width:190px}}
 
+.compartir{height:40px;padding:0 16px;border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#7dd3fc}
+.compartir.activo{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.5);color:#6ee7b7}
+.espectador .barra,.espectador .reiniciar,.espectador .compartir{display:none!important}
+.modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,6,14,.82);backdrop-filter:blur(6px)}
+.caja{width:100%;max-width:440px;padding:26px;border-radius:24px;text-align:center;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,#151e33,#0d1324)}
+.caja h3{margin:0 0 8px;font-size:21px;color:#fbbf24}
+.caja p{margin:0 0 16px;font-size:14px;line-height:1.5;color:#94a3b8}
+.caja input{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e2e8f0;font:600 13px Outfit,system-ui,sans-serif}
+.fila{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.fila button{flex:1;height:46px;border:0;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;color:#fff}
+.btn-p{background:linear-gradient(135deg,#10b981,#059669)}.btn-s{background:rgba(255,255,255,.08)}
+.estadoSala{margin-top:14px;font-size:13px;font-weight:700;color:#94a3b8}
+.estadoSala.ok{color:#34d399}.estadoSala.conectando{color:#7dd3fc}.estadoSala.error{color:#f87171}
 </style>
 </head>
 <body>
@@ -115,6 +128,7 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
     <div class="acciones">
       <div id="estado" class="pill listo"><span class="punto"></span><span id="estadoTxt">Listo para iniciar</span></div>
       <label class="voz" id="vozWrap"><i data-i="mic"></i><select id="selVoz" aria-label="Voz del canto"></select></label>
+      <button id="btnCompartir" class="compartir"><i data-i="share"></i>Compartir</button>
       <button id="btnReiniciar" class="reiniciar"><i data-i="refresh"></i>Reiniciar</button>
     </div>
   </header>
@@ -153,6 +167,25 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
     </section>
   </main>
 
+  <div id="entrada" class="modal oculta">
+    <div class="caja">
+      <h3>🎱 Bingo en vivo</h3>
+      <p>Estás viendo el juego que dirige el anfitrión: bombo, tablero y voz en esta pantalla. Toca el botón para entrar y activar el sonido.</p>
+      <div class="fila"><button id="btnEntrar" class="btn-p">Entrar al bingo</button></div>
+    </div>
+  </div>
+
+  <div id="panel" class="modal oculta">
+    <div class="caja">
+      <h3>Jugar en varias pantallas</h3>
+      <p>Comparte este enlace. Quien lo abra verá lo mismo que tú (bombo, tablero y voz) y solo tú controlas el juego.</p>
+      <input id="enlace" readonly>
+      <div class="fila"><button id="btnCopiar" class="btn-p">Copiar enlace</button><button id="btnEnviar" class="btn-s">Compartir…</button></div>
+      <div id="estadoSala" class="estadoSala">Sin transmitir</div>
+      <div class="fila"><button id="btnDetener" class="btn-s">Dejar de transmitir</button><button id="btnCerrarPanel" class="btn-s">Cerrar</button></div>
+    </div>
+  </div>
+
   <div id="bola" class="bolaVis oculta"><span class="l"></span><span class="n"></span></div>
 
   <footer class="barra">
@@ -161,7 +194,8 @@ h2.gris{color:#94a3b8}h2.claro{color:#cbd5e1}h2.claro i{color:#fbbf24}
     <button id="btnJugar" class="btn-main"></button>
   </footer>
 
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
 /* ============ CONFIGURACIÓN (cambia aquí lo que quieras) ============ */
 const CFG = {
   velocidadCanto: 0.8,       // Qué tan despacio canta la bola. 1 = normal, 0.7 = más lento, 1.2 = más rápido
@@ -171,7 +205,10 @@ const CFG = {
   tiempoRevolver: 2500,      // Milisegundos que gira el bombo antes de sacar la bola
   idioma: 'es-CO',           // Idioma preferido de la voz (es-CO, es-MX, es-US, es-ES)
   usarAudios: false,         // false = voz del navegador | true = tus propios archivos en la carpeta audio/
-  carpetaAudios: 'audio/'    // Archivos esperados: audio/B1.mp3, audio/B2.mp3 ... audio/O75.mp3
+  carpetaAudios: 'audio/',   // Archivos esperados: audio/B1.mp3, audio/B2.mp3 ... audio/O75.mp3
+  palabraInicial: '',        // Si en tu PC todavía se come la letra, escribe aquí una palabra de arranque, por ejemplo 'Bola'
+  broker: 'wss://broker.emqx.io:8084/mqtt', // Servidor gratuito que conecta las pantallas (modo compartido)
+  prefijoSala: 'bingoFamiliar75'            // Nombre base de las salas (déjalo así)
 };
 /* =================================================================== */
 
@@ -188,7 +225,8 @@ const ICONOS = {
   skip: '<polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" y1="5" x2="19" y2="19"/>',
   list: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
   history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-  table: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>'
+  table: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'
 };
 const svg = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[n]}</svg>`;
 
@@ -203,8 +241,10 @@ const btnJugar = $('btnJugar'), btnRecuento = $('btnRecuento'), btnSiguiente = $
 let pool = [], llamadas = [];
 let jugando = false, recontando = false, ciclo = false, enTurno = false, partida = 0;
 let despertar = null, audioActual = null, voz = null, vocesES = [];
+let modo = 'anfitrion', sala = null, cliente = null, conexion = 'no', estadoRecibido = false;
+let juegoId = null, juegoVisto = null, cola = Promise.resolve(), vistos = [];
 
-const terminado = () => !pool.length && !enTurno;
+const terminado = () => llamadas.length === 75 && !enTurno;
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 function esperar(ms) {
   return new Promise(res => {
@@ -270,11 +310,14 @@ function actualizar() {
   $('restantes').textContent = rest;
   $('badgeBolas').textContent = rest + ' Bolas';
 
-  let est = ['listo', 'Listo para iniciar'];
-  if (recontando) est = ['recuento', 'Recontando…'];
+  let est;
+  if (modo === 'espectador' && conexion !== 'ok') est = conexion === 'error' ? ['fin', 'Sin conexión con la sala'] : ['recuento', 'Conectando…'];
+  else if (modo === 'espectador' && !estadoRecibido) est = ['pausa', 'Esperando al anfitrión…'];
+  else if (recontando) est = ['recuento', 'Recontando…'];
   else if (terminado() && llamadas.length) est = ['fin', 'Juego terminado'];
   else if (jugando) est = ['jugando', 'Jugando'];
   else if (llamadas.length) est = ['pausa', 'En pausa'];
+  else est = ['listo', 'Listo para iniciar'];
   $('estado').className = 'pill ' + est[0];
   $('estadoTxt').textContent = est[1];
 
@@ -287,6 +330,7 @@ function actualizar() {
   $('txtRecuento').textContent = recontando ? 'Detener' : 'Reconteo';
   btnRecuento.disabled = !recontando && (jugando || enTurno || !llamadas.length);
   btnSiguiente.disabled = fin || recontando || (!jugando && (enTurno || !pool.length));
+  $('btnCompartir').classList.toggle('activo', conexion === 'ok' && modo === 'anfitrion');
 }
 
 /* ---------- Voz ---------- */
@@ -327,7 +371,7 @@ function decir(n, velocidad) {
   return new Promise(res => {
     let listo = false;
     const fin = () => { if (!listo) { listo = true; clearTimeout(guarda); audioActual = null; res(); } };
-    const guarda = setTimeout(fin, 10000);
+    const guarda = setTimeout(fin, 12000);
     if (CFG.usarAudios) {
       const a = new Audio(`${CFG.carpetaAudios}${etiqueta(n)}.mp3`);
       a.playbackRate = velocidad; audioActual = a;
@@ -335,11 +379,20 @@ function decir(n, velocidad) {
       a.play().catch(fin);
     } else {
       if (!('speechSynthesis' in window)) return fin();
-      const u = new SpeechSynthesisUtterance(`${NOMBRES[filaDe(n)]}, ${n}`);
-      u.lang = voz ? voz.lang : CFG.idioma;
-      if (voz) u.voice = voz;
-      u.rate = velocidad; u.onend = fin; u.onerror = fin;
-      speechSynthesis.speak(u);
+      // Se dice en tres partes: un arranque (en silencio, despierta el audio del PC para que no se coma la letra),
+      // luego la letra y luego el número.
+      const nueva = (txt, vol) => {
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = voz ? voz.lang : CFG.idioma;
+        if (voz) u.voice = voz;
+        u.rate = velocidad; u.volume = vol; u.onerror = fin;
+        return u;
+      };
+      const arranque = nueva(CFG.palabraInicial || 'a', CFG.palabraInicial ? 1 : 0);
+      const letra = nueva(NOMBRES[filaDe(n)] + '.', 1);
+      const numero = nueva(String(n), 1);
+      numero.onend = fin;
+      speechSynthesis.speak(arranque); speechSynthesis.speak(letra); speechSynthesis.speak(numero);
     }
   });
 }
@@ -358,44 +411,46 @@ async function volar(frames, ms, easing) {
   try { await a.finished; } catch (e) {}
 }
 
-/* ---------- Un turno: revolver, sacar, cantar, colocar ---------- */
+/* ---------- Presentar una bola: bombo → tarjeta → voz → tablero (lo usan el anfitrión y los espectadores) ---------- */
+async function presentarBola(n, p) {
+  prepararBola(n);
+  const d = centro(svgBombo), t = dentro(centro(bolaGrande)), s = bolaGrande.offsetWidth / TAM;
+  await volar([{ transform: pos(d.x, d.y, .15), opacity: 0 }, { transform: pos(t.x, t.y, s), opacity: 1 }], 900, 'cubic-bezier(.2,.8,.2,1)');
+  if (p !== partida) return;
+  svgBombo.classList.remove('girando');
+  bola.classList.add('oculta');
+  mostrarGrande(n); renderUltimas(); actualizar();
+
+  await decir(n, CFG.velocidadCanto);
+  if (p !== partida) return;
+  await esperar(500);
+  if (p !== partida) return;
+
+  const c = celda(n);
+  const r = c.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > innerHeight - 90) c.scrollIntoView({ block: 'center' });
+  const o = dentro(centro(bolaGrande)), e = centro(c);
+  prepararBola(n);
+  await volar([{ transform: pos(o.x, o.y, s), opacity: 1 }, { transform: pos(e.x, e.y, Math.min(c.offsetWidth, c.offsetHeight) / TAM), opacity: .9 }], 800, 'ease-in-out');
+  if (p !== partida) return;
+  bola.classList.add('oculta');
+  c.classList.add('salio', 'pop');
+}
+
+/* ---------- Un turno del anfitrión: revolver, sacar y presentar ---------- */
 async function turno(manual = false) {
   const p = partida;
   enTurno = true;
   const n = pool.pop();
   actualizar();
   try {
-    svgBombo.classList.add('girando');
+    svgBombo.classList.add('girando'); enviar({ t: 'girar' });
     await esperar(CFG.tiempoRevolver);
     if (p !== partida) return;
-    if (!manual && !jugando) { pool.push(n); svgBombo.classList.remove('girando'); return; }
+    if (!manual && !jugando) { pool.push(n); svgBombo.classList.remove('girando'); enviar({ t: 'parar' }); return; }
     llamadas.push(n);
-
-    // 1) del bombo a la tarjeta "Última bola cantada"
-    prepararBola(n);
-    const d = centro(svgBombo), t = dentro(centro(bolaGrande)), s = bolaGrande.offsetWidth / TAM;
-    await volar([{ transform: pos(d.x, d.y, .15), opacity: 0 }, { transform: pos(t.x, t.y, s), opacity: 1 }], 900, 'cubic-bezier(.2,.8,.2,1)');
-    if (p !== partida) return;
-    svgBombo.classList.remove('girando');
-    bola.classList.add('oculta');
-    mostrarGrande(n); renderUltimas(); actualizar();
-
-    // 2) cantar
-    await decir(n, CFG.velocidadCanto);
-    if (p !== partida) return;
-    await esperar(500);
-    if (p !== partida) return;
-
-    // 3) de la tarjeta a su casilla del tablero
-    const c = celda(n);
-    let r = c.getBoundingClientRect();
-    if (r.top < 0 || r.bottom > innerHeight - 90) c.scrollIntoView({ block: 'center' });
-    const o = dentro(centro(bolaGrande)), e = centro(c);
-    prepararBola(n);
-    await volar([{ transform: pos(o.x, o.y, s), opacity: 1 }, { transform: pos(e.x, e.y, Math.min(c.offsetWidth, c.offsetHeight) / TAM), opacity: .9 }], 800, 'ease-in-out');
-    if (p !== partida) return;
-    bola.classList.add('oculta');
-    c.classList.add('salio', 'pop');
+    enviar({ t: 'bola', n }); sincronizar();
+    await presentarBola(n, p);
   } finally {
     if (p === partida) { enTurno = false; actualizar(); }
   }
@@ -412,9 +467,121 @@ async function bucle() {
   }
   if (p !== partida) return;
   ciclo = false;
-  if (!pool.length) jugando = false;
+  if (!pool.length) { jugando = false; sincronizar(); }
   actualizar();
 }
+
+/* ---------- Modo compartido (varias pantallas) ---------- */
+const nuevoId = () => Math.random().toString(36).slice(2, 10);
+const tema = s => `${CFG.prefijoSala}/${sala}/${s}`;
+const enlace = () => `${location.href.split('#')[0]}#sala=${sala}`;
+
+function calentar() { // desbloquea la voz en el teléfono (los navegadores exigen un toque antes de hablar)
+  if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance('a'); u.volume = 0; speechSynthesis.speak(u); }
+}
+function enviar(m) {
+  if (modo !== 'anfitrion' || !cliente || !cliente.connected) return;
+  try { cliente.publish(tema('ev'), JSON.stringify({ ...m, id: nuevoId(), g: juegoId }), { qos: 1 }); } catch (e) {}
+}
+function sincronizar() { // foto del juego para quien entre tarde
+  if (modo !== 'anfitrion' || !cliente || !cliente.connected) return;
+  try { cliente.publish(tema('estado'), JSON.stringify({ llamadas, jugando, g: juegoId }), { qos: 1, retain: true }); } catch (e) {}
+}
+function actualizarPanel() {
+  const t = { ok: '● Transmitiendo en vivo', conectando: 'Conectando…', error: 'Sin conexión (reintentando…)', no: 'Sin transmitir' };
+  $('estadoSala').textContent = t[conexion] || t.no;
+  $('estadoSala').className = 'estadoSala ' + conexion;
+}
+function conectar() {
+  if (cliente) return;
+  if (typeof mqtt === 'undefined') { conexion = 'error'; actualizarPanel(); actualizar(); return; }
+  conexion = 'conectando'; actualizarPanel(); actualizar();
+  cliente = mqtt.connect(CFG.broker, { clientId: 'b75_' + nuevoId(), clean: true, reconnectPeriod: 3000, connectTimeout: 10000 });
+  cliente.on('connect', () => {
+    conexion = 'ok';
+    if (modo === 'espectador') { estadoRecibido = false; cliente.subscribe([tema('estado'), tema('ev')], { qos: 1 }); }
+    else sincronizar();
+    actualizarPanel(); actualizar();
+  });
+  cliente.on('reconnect', () => { conexion = 'conectando'; actualizarPanel(); actualizar(); });
+  cliente.on('close', () => { if (cliente) { conexion = 'error'; actualizarPanel(); actualizar(); } });
+  cliente.on('message', (top, buf) => {
+    if (modo !== 'espectador') return;
+    let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; }
+    if (top.endsWith('/estado')) return recibirEstado(m);
+    if (m.id) { if (vistos.includes(m.id)) return; vistos.push(m.id); if (vistos.length > 60) vistos.shift(); }
+    recibirEvento(m);
+  });
+}
+function recibirEstado(m) {
+  if (estadoRecibido) return;
+  estadoRecibido = true; juegoVisto = m.g || null;
+  jugando = !!m.jugando;
+  (Array.isArray(m.llamadas) ? m.llamadas : []).forEach(n => {
+    if (n >= 1 && n <= 75 && !llamadas.includes(n)) { llamadas.push(n); celda(n).classList.add('salio'); }
+  });
+  if (llamadas.length) mostrarGrande(llamadas[llamadas.length - 1]);
+  renderUltimas(); actualizar();
+}
+async function recontarUno(n) {
+  const c = celda(n);
+  c.classList.add('resalta');
+  mostrarGrande(n);
+  await decir(n, CFG.velocidadRecuento);
+  c.classList.remove('resalta');
+}
+function recibirEvento(m) {
+  if (m.g && juegoVisto && m.g !== juegoVisto) { nuevaPartida(); estadoRecibido = true; }
+  if (m.g) juegoVisto = m.g;
+  const p = partida;
+  switch (m.t) {
+    case 'girar': svgBombo.classList.add('girando'); break;
+    case 'parar': svgBombo.classList.remove('girando'); break;
+    case 'bola':
+      if (llamadas.includes(m.n)) return;
+      llamadas.push(m.n);
+      cola = cola.then(() => (p === partida ? presentarBola(m.n, p) : null));
+      break;
+    case 'jugar': jugando = true; actualizar(); break;
+    case 'pausa': jugando = false; detenerVoz(); actualizar(); break;
+    case 'rc':
+      recontando = true; actualizar();
+      cola = cola.then(() => (p === partida ? recontarUno(m.n) : null));
+      break;
+    case 'rcFin':
+      cola = cola.then(() => {
+        if (p !== partida) return;
+        recontando = false;
+        document.querySelectorAll('.resalta').forEach(e => e.classList.remove('resalta'));
+        if (llamadas.length) mostrarGrande(llamadas[llamadas.length - 1]);
+        actualizar();
+      });
+      break;
+  }
+}
+
+const hashSala = location.hash.match(/sala=([a-z0-9]+)/i);
+if (hashSala) {                         // quien abre el enlace compartido es espectador
+  modo = 'espectador'; sala = hashSala[1].toLowerCase();
+  document.body.classList.add('espectador');
+  $('entrada').classList.remove('oculta');
+} else {                                // quien abre la página normal es el anfitrión
+  try { sala = localStorage.getItem('bingoSala'); } catch (e) {}
+  if (!sala) {
+    sala = Array.from({ length: 6 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');
+    try { localStorage.setItem('bingoSala', sala); } catch (e) {}
+  }
+}
+$('btnEntrar').onclick = () => { $('entrada').classList.add('oculta'); calentar(); conectar(); actualizar(); };
+$('btnCompartir').onclick = () => { $('enlace').value = enlace(); $('panel').classList.remove('oculta'); conectar(); actualizarPanel(); };
+$('btnCerrarPanel').onclick = () => $('panel').classList.add('oculta');
+$('btnDetener').onclick = () => { if (cliente) { const c = cliente; cliente = null; c.end(true); } conexion = 'no'; actualizarPanel(); actualizar(); };
+$('btnCopiar').onclick = async () => {
+  try { await navigator.clipboard.writeText(enlace()); } catch (e) { $('enlace').select(); document.execCommand('copy'); }
+  $('btnCopiar').textContent = '¡Copiado!'; setTimeout(() => $('btnCopiar').textContent = 'Copiar enlace', 1800);
+};
+if (navigator.share) $('btnEnviar').onclick = () => navigator.share({ title: 'Bingo Familiar 75', text: 'Entra al bingo en vivo', url: enlace() }).catch(() => {});
+else $('btnEnviar').classList.add('oculta');
 
 /* ---------- Botones ---------- */
 function alternarJuego() {
@@ -422,11 +589,13 @@ function alternarJuego() {
     jugando = false;
     detenerVoz();
     if (despertar) despertar();
+    enviar({ t: 'pausa' }); sincronizar();
     actualizar();
   } else {                             // INICIAR / CONTINUAR
     if (recontando) { recontando = false; detenerVoz(); if (despertar) despertar(); }
     if (!pool.length) return;
     jugando = true;
+    enviar({ t: 'jugar' }); sincronizar();
     actualizar();
     bucle();
   }
@@ -450,6 +619,7 @@ async function recontar() {            // Reconteo: B → I → N → G → O (d
     const c = celda(n);
     c.classList.add('resalta');
     c.scrollIntoView({ block: 'nearest' });
+    enviar({ t: 'rc', n });
     mostrarGrande(n);
     await decir(n, CFG.velocidadRecuento);
     c.classList.remove('resalta');
@@ -458,19 +628,21 @@ async function recontar() {            // Reconteo: B → I → N → G → O (d
   }
   if (p !== partida) return;
   recontando = false;
+  enviar({ t: 'rcFin' });
   document.querySelectorAll('.resalta').forEach(e => e.classList.remove('resalta'));
   if (llamadas.length) mostrarGrande(llamadas[llamadas.length - 1]);
   actualizar();
 }
 
 function nuevaPartida() {
-  partida++; jugando = false; recontando = false; ciclo = false; enTurno = false;
+  partida++; if (modo === 'anfitrion') juegoId = nuevoId(); jugando = false; recontando = false; ciclo = false; enTurno = false;
   detenerVoz(); if (despertar) despertar();
   bola.getAnimations().forEach(a => a.cancel()); bola.classList.add('oculta');
   svgBombo.classList.remove('girando');
   pool = mezclar(Array.from({ length: 75 }, (_, i) => i + 1));
   llamadas = [];
   construirTablero(); resetGrande(); renderUltimas(); actualizar();
+  if (modo === 'anfitrion') { enviar({ t: 'reinicio' }); sincronizar(); }
 }
 function reiniciar() {
   if (llamadas.length && !confirm('¿Empezar un juego nuevo? Se borrarán las bolas que ya salieron.')) return;
